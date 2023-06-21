@@ -1,4 +1,6 @@
 from entsoe import EntsoePandasClient
+from dwdweather import DwdWeather
+import datetime
 import pandas as pd
 import argparse
 import os
@@ -15,11 +17,50 @@ class DataHandler:
             'day_ahead_prices': 'day_ahead_price',
             'generation_forecast': 'forecasted_generation',
         }
+       ##self.dw = DwdWeather()
+        self.station_ids = {
+            "Munich": 2667,
+            "Berlin": 1048,
+            "Frankfurt": 2483
+        }
 
     def _set_data_settings(self, country_code, start, end):
         self.country_code = country_code
         self.start = start
         self.end = end
+
+    # def _get_weather_data(self):
+    #     '''
+    #     Get weather data from DWD
+    #     '''
+    #     # Empty list to store the data
+    #     data = []
+
+    #     # Get data for each city
+    #     for city, station_id in self.station_ids.items():
+    #         timestamp = self.start
+    #         while timestamp <= self.end:
+    #             # Query data for specific station and timestamp
+    #             res = self.dw.query(station_id, timestamp)
+                
+    #             # Check if data is not None
+    #             if res is not None:
+    #                 # Add city name, timestamp and weather data to the list
+    #                 row = [city, timestamp] + list(res.values())
+    #                 data.append(row)
+                
+    #             # Increment timestamp by one hour
+    #             timestamp += datetime.timedelta(hours=1)
+
+    #     # Column names: city, timestamp, and weather data keys
+    #     columns = ["City", "Timestamp"] + list(res.keys())
+
+    #     # Convert the list to a DataFrame
+    #     df = pd.DataFrame(data, columns=columns)
+
+    #     # Pivot the DataFrame
+    #     pivot_df = df.pivot(index='Timestamp', columns='City')
+    #     return pivot_df
 
     def _get_data(self, data_name):
 
@@ -55,6 +96,9 @@ class DataHandler:
             data = self.client.query_day_ahead_prices(self.country_code, start=self.start,end=self.end)
             data = data.to_frame()
             data.columns = [self.series_data_columns[data_name]]
+        elif data_name == 'weather_data':
+            data = pd.read_csv('/home/mamur/EON/forecast-electricity-prices/src/data/weather_data.csv', index_col=0, parse_dates=True)
+            #data = self._get_weather_data()
         else:
             raise Exception('Data name is not correct/not available')
     
