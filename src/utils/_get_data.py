@@ -78,17 +78,39 @@ class DataHandler:
         '''
 
         df = pd.read_csv(self.weather_data_path, index_col=0, parse_dates=True)
+        # relevant_columns = [
+        #     'air_temperature_200', 'visibility_value', 'wind_speed', 'wind_direction',
+        #     'air_temperature_200.1', 'visibility_value.1', 'wind_speed.1', 'wind_direction.1',
+        #     'air_temperature_200.2', 'visibility_value.2', 'wind_speed.2', 'wind_direction.2'
+        # ]
+
         relevant_columns = [
-            'air_temperature_200', 'visibility_value', 'wind_speed', 'wind_direction',
-            'air_temperature_200.1', 'visibility_value.1', 'wind_speed.1', 'wind_direction.1',
-            'air_temperature_200.2', 'visibility_value.2', 'wind_speed.2', 'wind_direction.2'
+            'air_temperature_200', 'air_temperature_200.1', 'air_temperature_200.2',
+            'relative_humidity_200', 'relative_humidity_200.1', 'relative_humidity_200.2',
+            'cloudiness_total_cover', 'cloudiness_total_cover.1', 'cloudiness_total_cover.2',
+            'sun_duration', 'sun_duration.1', 'sun_duration.2',
+            'visibility_value', 'visibility_value.1', 'visibility_value.2',
+            'wind_speed', 'wind_speed.1', 'wind_speed.2',
+            'wind_direction', 'wind_direction.1', 'wind_direction.2',
+            'pressure_msl', 'pressure_msl.1', 'pressure_msl.2'
         ]
+
         df = df[relevant_columns]
         df = df.iloc[2:]
         # Rename columns for clarity
-        df.columns = ['air_temperature_berlin', 'visibility_berlin', 'wind_speed_berlin', 'wind_direction_berlin',
-                    'air_temperature_frankfurt', 'visibility_frankfurt', 'wind_speed_frankfurt', 'wind_direction_frankfurt',
-                    'air_temperature_munich', 'visibility_munich', 'wind_speed_munich', 'wind_direction_munich']
+        # df.columns = ['air_temperature_berlin', 'visibility_berlin', 'wind_speed_berlin', 'wind_direction_berlin',
+        #             'air_temperature_frankfurt', 'visibility_frankfurt', 'wind_speed_frankfurt', 'wind_direction_frankfurt',
+        #             'air_temperature_munich', 'visibility_munich', 'wind_speed_munich', 'wind_direction_munich']
+
+        df.columns = ['air_temperature_berlin', 'air_temperature_frankfurt', 'air_temperature_munich',
+                    'relative_humidity_berlin', 'relative_humidity_frankfurt', 'relative_humidity_munich',
+                    'cloudiness_total_cover_berlin', 'cloudiness_total_cover_frankfurt', 'cloudiness_total_cover_munich',
+                    'sun_duration_berlin', 'sun_duration_frankfurt', 'sun_duration_munich',
+                    'visibility_berlin', 'visibility_frankfurt', 'visibility_munich',
+                    'wind_speed_berlin', 'wind_speed_frankfurt', 'wind_speed_munich',
+                    'wind_direction_berlin', 'wind_direction_frankfurt', 'wind_direction_munich',
+                    'pressure_msl_berlin', 'pressure_msl_frankfurt', 'pressure_msl_munich']
+        
 
         df.index = pd.DatetimeIndex(df.index).tz_localize('Europe/Berlin', nonexistent='shift_forward')
         df = df.astype(float)
