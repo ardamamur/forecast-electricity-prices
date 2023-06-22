@@ -24,6 +24,8 @@ class DataHandler:
             "Frankfurt": 2483
         }
 
+        self.weather_data_path = '/home/mamur/EON/forecast-electricity-prices/src/data/weather_data.csv'
+
     def _set_data_settings(self, country_code, start, end):
         self.country_code = country_code
         self.start = start
@@ -62,6 +64,62 @@ class DataHandler:
     #     pivot_df = df.pivot(index='Timestamp', columns='City')
     #     return pivot_df
 
+    def _get_weather_data(self):
+        '''
+        
+        1) Air Temperature: Temperature has a direct effect on electricity demand. 
+            High temperatures can lead to increased air conditioning use, while low temperatures can increase heating demand.
+        2) Wind Speed: Wind speed can affect the generation of wind power. 
+            Higher wind speeds generally lead to more wind power generation, which can lower electricity prices.
+        3) Visibility: Poor visibility could indicate weather conditions like fog or heavy precipitation, 
+            which might impact solar power generation.
+        4) Wind Direction: This could impact wind power generation, 
+            although its impact may not be as substantial as wind speed.
+        '''
+
+        df = pd.read_csv(self.weather_data_path, index_col=0, parse_dates=True)
+        relevant_columns = [
+            'air_temperature_200', 'visibility_value', 'wind_speed', 'wind_direction',
+            'air_temperature_200.1', 'visibility_value.1', 'wind_speed.1', 'wind_direction.1',
+            'air_temperature_200.2', 'visibility_value.2', 'wind_speed.2', 'wind_direction.2'
+        ]
+        df = df[relevant_columns]
+        df = df.iloc[2:]
+        # Rename columns for clarity
+        df.columns = ['air_temperature_berlin', 'visibility_berlin', 'wind_speed_berlin', 'wind_direction_berlin',
+                    'air_temperature_frankfurt', 'visibility_frankfurt', 'wind_speed_frankfurt', 'wind_direction_frankfurt',
+                    'air_temperature_munich', 'visibility_munich', 'wind_speed_munich', 'wind_direction_munich']
+
+        df.index = pd.DatetimeIndex(df.index).tz_localize('Europe/Berlin', nonexistent='shift_forward')
+        df = df.astype(float)
+        cities = ['berlin', 'frankfurt', 'munich']
+
+        # Create a list to hold the dataframes
+        dfs = []
+
+        for city in cities:
+            # Subset df for each city
+            df_temp = df[[col for col in df.columns if city in col]].copy()
+
+            # Rename columns to remove city names
+            df_temp.columns = [col.replace(f'_{city}','') for col in df_temp.columns]
+            
+            # Add a 'city' column
+            df_temp['city'] = city
+            
+            # Add the temporary df to the list of dataframes
+            dfs.append(df_temp)
+
+        # Concatenate all the dataframes in the list
+        # The keys argument will create a multi-index, where the first level of the index is the city and the second level is the original timestamp index
+        df_melted = pd.concat(dfs)
+
+        # Reset the index to make 'city' a column, while keeping timestamp as index
+        #df_melted.reset_index(level=0, inplace=True)
+    
+        
+        return df_melted
+
     def _get_data(self, data_name):
 
         '''
@@ -97,13 +155,35 @@ class DataHandler:
             data = data.to_frame()
             data.columns = [self.series_data_columns[data_name]]
         elif data_name == 'weather_data':
-            data = pd.read_csv('/home/mamur/EON/forecast-electricity-prices/src/data/weather_data.csv', index_col=0, parse_dates=True)
+            #data = pd.read_csv('/home/mamur/EON/forecast-electricity-prices/src/data/weather_data.csv', index_col=0, parse_dates=True)
             #data = self._get_weather_data()
+            data = self._get_weather_data()
         else:
             raise Exception('Data name is not correct/not available')
     
         #data = pd.to_datetime(data.index)
         return data
 
+    def _resample_data(self, data, freq):
+        '''
+        Resample the data
+        '''
+        # Resample the data
+        data = data.resample(freq).mean()
+        return data
 
+    def _remove_data_from_dict(self, data_dict, data_name):
+        '''
+        Remove data from dictionary
+        '''
+        # Remove data from dictionary
+        data_dict.pop(data_name)
+        return data_dict
 
+    def _lag_dataframe(self, data, lag):
+        '''
+        Lag the data
+        '''
+        # Lag the data
+        data = data.shift(lag)
+        return data
