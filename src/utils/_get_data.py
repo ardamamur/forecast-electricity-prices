@@ -36,13 +36,12 @@ class DataHandler:
         # Empty list to store the data
         self.dw = DwdWeather(resolution="hourly")
         data = []
-
-
-        # Get data for each city
+        res = None
+        last_res = None
         for city, station_id in self.station_ids.items():
             print(f"Getting weather data for {city}...")
             timestamp = self.start
-            res = None
+
             while timestamp <= self.end:
                 # Query data for specific station and timestamp
                 res = self.dw.query(station_id, timestamp)
@@ -52,101 +51,45 @@ class DataHandler:
                     # Add city name, timestamp and weather data to the list
                     row = [city, timestamp] + list(res.values())
                     data.append(row)
+                    last_res = res
                 
                 # Increment timestamp by one hour
                 timestamp += datetime.timedelta(hours=1)
 
-            if res is not None:    
-                # Column names: city, timestamp, and weather data keys
-                columns = ["City", "Timestamp"] + list(res.keys())
-                # Convert the list to a DataFrame
-                df = pd.DataFrame(data, columns=columns)
-                # Pivot the DataFrame
-                pivot_df = df.pivot(index='Timestamp', columns='City')
-            else:
-                pivot_df = pd.DataFrame()
+
+        # Column names: city, timestamp, and weather data keys
+        columns = ["City", "Timestamp"] + list(last_res.keys())
+        # Convert the list to a DataFrame
+        df = pd.DataFrame(data, columns=columns)
+        # Pivot the DataFrame
+        pivot_df = df.pivot(index='Timestamp', columns='City')
 
         return pivot_df
 
-    def _get_weather_data_from_file(self, weather_data_path):
+    def _get_weather_data_from_file(self):
         '''
-        
-        1) Air Temperature: Temperature has a direct effect on electricity demand. 
-            High temperatures can lead to increased air conditioning use, while low temperatures can increase heating demand.
-        2) Wind Speed: Wind speed can affect the generation of wind power. 
-            Higher wind speeds generally lead to more wind power generation, which can lower electricity prices.
-        3) Visibility: Poor visibility could indicate weather conditions like fog or heavy precipitation, 
-            which might impact solar power generation.
-        4) Wind Direction: This could impact wind power generation, 
-            although its impact may not be as substantial as wind speed.
+        https://open-meteo.com/
+        I used the above website to get the weather data for the cities. Currently,
+        I downladed the data manually from the webapp. I will automate this process
+        later.
         '''
 
-        df = pd.read_csv(weather_data_path, index_col=0, parse_dates=True)
-        # relevant_columns = [
-        #     'air_temperature_200', 'visibility_value', 'wind_speed', 'wind_direction',
-        #     'air_temperature_200.1', 'visibility_value.1', 'wind_speed.1', 'wind_direction.1',
-        #     'air_temperature_200.2', 'visibility_value.2', 'wind_speed.2', 'wind_direction.2'
-        # ]
+        df_berlin = pd.read_csv("src/data/berlin.csv")
+        df_frankfurt = pd.read_csv("src/data/frankfurt.csv")
+        df_munich = pd.read_csv("src/data/munich.csv")
 
-        # relevant_columns = [
-        #     'air_temperature_200', 'air_temperature_200.1', 'air_temperature_200.2',
-        #     'relative_humidity_200', 'relative_humidity_200.1', 'relative_humidity_200.2',
-        #     'cloudiness_total_cover', 'cloudiness_total_cover.1', 'cloudiness_total_cover.2',
-        #     'sun_duration', 'sun_duration.1', 'sun_duration.2',
-        #     'visibility_value', 'visibility_value.1', 'visibility_value.2',
-        #     'wind_speed', 'wind_speed.1', 'wind_speed.2',
-        #     'wind_direction', 'wind_direction.1', 'wind_direction.2',
-        #     'pressure_msl', 'pressure_msl.1', 'pressure_msl.2'
-        # ]
+        df_dict = {
+            'berlin': df_berlin,
+            'frankfurt': df_frankfurt,
+            'munich': df_munich
+        }
 
-        # df = df[relevant_columns]
-        df = df.iloc[2:]
-        # Rename columns for clarity
-        # df.columns = ['air_temperature_berlin', 'visibility_berlin', 'wind_speed_berlin', 'wind_direction_berlin',
-        #             'air_temperature_frankfurt', 'visibility_frankfurt', 'wind_speed_frankfurt', 'wind_direction_frankfurt',
-        #             'air_temperature_munich', 'visibility_munich', 'wind_speed_munich', 'wind_direction_munich']
+        for city, df in df_dict.items():
+            df['city_name'] = city  # add a new column with city name
+        # use pd.concat to combine the dataframes
+        combined_df = pd.concat(df_dict.values(), ignore_index=True)
+        return combined_df
 
-        # conver all .1 to 
-
-        # df.columns = ['air_temperature_berlin', 'air_temperature_frankfurt', 'air_temperature_munich',
-        #             'relative_humidity_berlin', 'relative_humidity_frankfurt', 'relative_humidity_munich',
-        #             'cloudiness_total_cover_berlin', 'cloudiness_total_cover_frankfurt', 'cloudiness_total_cover_munich',
-        #             'sun_duration_berlin', 'sun_duration_frankfurt', 'sun_duration_munich',
-        #             'visibility_berlin', 'visibility_frankfurt', 'visibility_munich',
-        #             'wind_speed_berlin', 'wind_speed_frankfurt', 'wind_speed_munich',
-        #             'wind_direction_berlin', 'wind_direction_frankfurt', 'wind_direction_munich',
-        #             'pressure_msl_berlin', 'pressure_msl_frankfurt', 'pressure_msl_munich']
-        
-
-        df.index = pd.DatetimeIndex(df.index).tz_localize('Europe/Berlin', nonexistent='shift_forward')
-        df = df.astype(float)
-        cities = list(self.station_ids.keys())
-
-        # Create a list to hold the dataframes
-        dfs = []
-
-        for city in cities:
-            # Subset df for each city
-            df_temp = df[[col for col in df.columns if city in col]].copy()
-
-            # Rename columns to remove city names
-            df_temp.columns = [col.replace(f'_{city}','') for col in df_temp.columns]
-            
-            # Add a 'city' column
-            df_temp['city'] = city
-            
-            # Add the temporary df to the list of dataframes
-            dfs.append(df_temp)
-
-        # Concatenate all the dataframes in the list
-        # The keys argument will create a multi-index, where the first level of the index is the city and the second level is the original timestamp index
-        df_melted = pd.concat(dfs)
-
-        # Reset the index to make 'city' a column, while keeping timestamp as index
-        #df_melted.reset_index(level=0, inplace=True)
-    
-        
-        return df_melted
 
     def _get_data(self, data_name):
 
@@ -182,9 +125,7 @@ class DataHandler:
             data = self.client.query_day_ahead_prices(self.country_code, start=self.start,end=self.end)
             data = data.to_frame()
             data.columns = [self.series_data_columns[data_name]]
-        elif data_name == 'weather_data_from_file':
-            #data = pd.read_csv('/home/mamur/EON/forecast-electricity-prices/src/data/weather_data.csv', index_col=0, parse_dates=True)
-            #data = self._get_weather_data()
+        elif data_name == 'weather_data':
             data = self._get_weather_data_from_file()
         elif data_name == 'weather_data_from_api':
             data = self._get_weather_data_from_api()
