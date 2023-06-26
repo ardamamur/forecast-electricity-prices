@@ -33,38 +33,7 @@ class DataHandler:
         '''
         Get weather data from DWD
         '''
-        # Empty list to store the data
-        self.dw = DwdWeather(resolution="hourly")
-        data = []
-        res = None
-        last_res = None
-        for city, station_id in self.station_ids.items():
-            print(f"Getting weather data for {city}...")
-            timestamp = self.start
-
-            while timestamp <= self.end:
-                # Query data for specific station and timestamp
-                res = self.dw.query(station_id, timestamp)
-                
-                # Check if data is not None
-                if res is not None:
-                    # Add city name, timestamp and weather data to the list
-                    row = [city, timestamp] + list(res.values())
-                    data.append(row)
-                    last_res = res
-                
-                # Increment timestamp by one hour
-                timestamp += datetime.timedelta(hours=1)
-
-
-        # Column names: city, timestamp, and weather data keys
-        columns = ["City", "Timestamp"] + list(last_res.keys())
-        # Convert the list to a DataFrame
-        df = pd.DataFrame(data, columns=columns)
-        # Pivot the DataFrame
-        pivot_df = df.pivot(index='Timestamp', columns='City')
-
-        return pivot_df
+        raise Exception('Not implemented yet')
 
     def _get_weather_data_from_file(self):
         '''
